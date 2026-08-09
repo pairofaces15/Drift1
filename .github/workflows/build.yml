@@ -1,0 +1,25 @@
+name: Build
+on: workflow_dispatch
+jobs:
+  ipa:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p www
+          cp $(find . -name '*.html' | head -1) www/index.html
+          npm init -y
+          npm i @capacitor/core@6 @capacitor/ios@6 @capacitor/cli@6
+          npx cap init Drift com.bristolbay.drift --web-dir www
+          npx cap add ios
+          npx cap sync ios
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
+            -configuration Release -sdk iphoneos -derivedDataPath b \
+            CODE_SIGNING_ALLOWED=NO clean build
+          mkdir -p out/Payload
+          cp -r b/Build/Products/Release-iphoneos/App.app out/Payload/
+          cd out && zip -qry Drift.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Drift-ipa
+          path: out/Drift.ipa
